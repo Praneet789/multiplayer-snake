@@ -46,24 +46,10 @@
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
 
-    const gridSize = 40;
     const tileCount = 20;
     let playerId = null;
 
-    const backgroundImg = new Image();
-    const foodImg = new Image();
-    backgroundImg.src = "assets/background1.jpg";
-    foodImg.src = "assets/apple.png";
-
-    const snakeImages = {};
-    for (let i = 0; i < 4; i++) {
-      snakeImages[`head${i}`] = new Image();
-      snakeImages[`head${i}`].src = `assets/head${i}.png`;
-      snakeImages[`body${i}`] = new Image();
-      snakeImages[`body${i}`].src = `assets/body${i}.png`;
-    }
-
-    const ws = new WebSocket("ws://localhost:8080");
+    const ws = new WebSocket("wss://multiplayer-snake-server-ix2c.onrender.com"); // ← Update this!
 
     ws.onopen = () => console.log("Connected to server");
 
@@ -76,10 +62,7 @@
       }
     };
 
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      renderError("Failed to connect to server");
-    };
+    ws.onerror = () => renderError("Failed to connect to server");
     ws.onclose = () => renderError("Lost connection to server");
 
     document.addEventListener("keydown", (e) => {
@@ -98,67 +81,33 @@
     }
 
     function renderGame(state) {
-      if (backgroundImg.complete && backgroundImg.naturalWidth !== 0) {
-        ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
-      } else {
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-
-      // Draw food
       const tileSize = canvas.width / tileCount;
-      if (foodImg.complete && foodImg.naturalWidth !== 0) {
-        ctx.drawImage(foodImg, state.food.x * tileSize, state.food.y * tileSize, tileSize, tileSize);
-      } else {
-        ctx.fillStyle = "red";
-        ctx.fillRect(state.food.x * tileSize, state.food.y * tileSize, tileSize - 2, tileSize - 2);
-      }
+      ctx.fillStyle = "black";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "red";
+      ctx.fillRect(state.food.x * tileSize, state.food.y * tileSize, tileSize - 2, tileSize - 2);
 
       state.players.forEach((player) => {
-        const headImg = snakeImages[player.headImg];
-        const bodyImg = snakeImages[player.bodyImg];
-        player.snake.forEach((segment, index) => {
-          const x = segment.x * tileSize;
-          const y = segment.y * tileSize;
-          if (index === 0 && headImg?.complete) {
-            ctx.save();
-            ctx.translate(x + tileSize / 2, y + tileSize / 2);
-            let rotation = 0;
-            if (player.snake.length > 1) {
-              const next = player.snake[1];
-              if (next.x < segment.x) rotation = Math.PI;
-              else if (next.x > segment.x) rotation = 0;
-              else if (next.y < segment.y) rotation = 3 * Math.PI / 2;
-              else if (next.y > segment.y) rotation = Math.PI / 2;
-            }
-            ctx.rotate(rotation);
-            ctx.drawImage(headImg, -tileSize / 2, -tileSize / 2, tileSize, tileSize);
-            ctx.restore();
-          } else if (bodyImg?.complete) {
-            ctx.drawImage(bodyImg, x, y, tileSize, tileSize);
-          } else {
-            ctx.fillStyle = "green";
-            ctx.fillRect(x, y, tileSize - 2, tileSize - 2);
-          }
+        ctx.fillStyle = "lime";
+        player.snake.forEach(segment => {
+          ctx.fillRect(segment.x * tileSize, segment.y * tileSize, tileSize - 2, tileSize - 2);
         });
 
         if (player.gameOver) {
           ctx.fillStyle = "white";
           ctx.font = `${Math.floor(canvas.width / 25)}px Arial`;
           ctx.textAlign = "center";
-          ctx.fillText(`Player ${player.id.slice(0, 4)}: Game Over`, canvas.width / 2, canvas.height / 2 + (player.id.charCodeAt(0) % 4) * 30);
+          ctx.fillText(`Player ${player.id.slice(0, 4)}: Game Over`, canvas.width / 2, canvas.height / 2 + 30);
         }
       });
 
-      scoreDisplay.innerHTML = state.players
-        .map((p) => `Player ${p.id.slice(0, 4)}: ${p.score}`)
-        .join("<br>");
+      scoreDisplay.innerHTML = state.players.map((p) =>
+        `Player ${p.id.slice(0, 4)}: ${p.score}`
+      ).join("<br>");
     }
 
     renderError("Connecting to server...");
-    requestAnimationFrame(function renderLoop() {
-      requestAnimationFrame(renderLoop);
-    });
   </script>
 </body>
 </html>
