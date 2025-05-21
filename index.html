@@ -49,7 +49,34 @@
     const tileCount = 20;
     let playerId = null;
 
-    const ws = new WebSocket("wss://multiplayer-snake-server-ix2c.onrender.com"); // ← Update this!
+    // Load assets
+    const assets = {
+      apple: new Image(),
+      background: new Image(),
+      snake: new Image(),
+      snakeHead: new Image(),
+    };
+    assets.apple.src = "assets/apple.png";
+    assets.background.src = "assets/background.jpg"; // You can switch to background1.jpg if needed
+    assets.snake.src = "assets/snake.png";
+    assets.snakeHead.src = "assets/snake_head.png"; // Note: File name in directory is snake_head.png
+
+    // Wait for all images to load before starting the game
+    let assetsLoaded = 0;
+    const totalAssets = Object.keys(assets).length;
+    for (let key in assets) {
+      assets[key].onload = () => {
+        assetsLoaded++;
+        if (assetsLoaded === totalAssets) {
+          console.log("All assets loaded");
+          // Start rendering once assets are loaded
+          renderError("Connecting to server...");
+        }
+      };
+      assets[key].onerror = () => console.error(`Failed to load ${key}`);
+    }
+
+    const ws = new WebSocket("wss://multiplayer-snake-server-ix2c.onrender.com");
 
     ws.onopen = () => console.log("Connected to server");
 
@@ -82,16 +109,19 @@
 
     function renderGame(state) {
       const tileSize = canvas.width / tileCount;
-      ctx.fillStyle = "black";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.fillStyle = "red";
-      ctx.fillRect(state.food.x * tileSize, state.food.y * tileSize, tileSize - 2, tileSize - 2);
+      // Draw background
+      ctx.drawImage(assets.background, 0, 0, canvas.width, canvas.height);
 
+      // Draw food (apple)
+      ctx.drawImage(assets.apple, state.food.x * tileSize, state.food.y * tileSize, tileSize, tileSize);
+
+      // Draw players' snakes
       state.players.forEach((player) => {
-        ctx.fillStyle = "lime";
-        player.snake.forEach(segment => {
-          ctx.fillRect(segment.x * tileSize, segment.y * tileSize, tileSize - 2, tileSize - 2);
+        player.snake.forEach((segment, index) => {
+          // Use snakeHead for the first segment, snake for the rest
+          const img = index === 0 ? assets.snakeHead : assets.snake;
+          ctx.drawImage(img, segment.x * tileSize, segment.y * tileSize, tileSize, tileSize);
         });
 
         if (player.gameOver) {
@@ -107,7 +137,7 @@
       ).join("<br>");
     }
 
-    renderError("Connecting to server...");
+    renderError("Loading assets...");
   </script>
 </body>
 </html>
